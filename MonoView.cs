@@ -24,13 +24,13 @@ namespace Tetris
 
         private const int blockSize = 50;
         private const int boardWidthBlocks = 10;
-        private const int boardHeightBlocks = 20;
+        private const int boardHeightBlocks = 22;
+        private const int numHiddenRows = 2;
 
         private const int boardWidth = boardWidthBlocks * blockSize;
-        private const int boardHeight = boardHeightBlocks * blockSize;
+        private const int boardHeight = (boardHeightBlocks - numHiddenRows) * blockSize;
 
         private const int rightBorder = 5 * blockSize;
-
 
         private readonly Color[] colors =
         {
@@ -50,7 +50,7 @@ namespace Tetris
             graphics.PreferredBackBufferWidth = boardWidth + rightBorder;
             graphics.PreferredBackBufferHeight = boardHeight;
             Content.RootDirectory = "Content";
-            game = new Tetris.Game(boardHeightBlocks, boardWidthBlocks);
+            game = new Tetris.Game(boardHeightBlocks, boardWidthBlocks, numHiddenRows);
         }
 
         /// <summary>
@@ -89,8 +89,13 @@ namespace Tetris
         }
 
 
-        private readonly IDictionary<Keys, TimeSpan> keyDownTime = new Dictionary<Keys, TimeSpan>();
-        private readonly TimeSpan keyRepeatTime = new TimeSpan(0, 0, 0, 0, 200);
+        private static readonly ISet<Keys> doNotRepeatKeys = new HashSet<Keys>() { Keys.Enter, Keys.Space, Keys.P, Keys.Up, Keys.Z};
+        private static readonly IDictionary<Keys, TimeSpan> keyDownTime = new Dictionary<Keys, TimeSpan>();
+        private static readonly IDictionary<Keys, TimeSpan> autoRepeatTime = new Dictionary<Keys, TimeSpan>();
+
+        private TimeSpan autoRepeatDelay = new TimeSpan(0, 0, 0, 0, 170);
+        private TimeSpan autoRepeatSpeed = new TimeSpan(0, 0, 0, 0, 50);
+
 
         private ISet<Keys> KeysPressed(KeyboardState currentKeyboardState, TimeSpan gameTime)
         {
@@ -101,12 +106,31 @@ namespace Tetris
                 if (!currentKeyboardState.IsKeyDown(key))
                 {
                     keyDownTime.Remove(key);
+                    autoRepeatTime.Remove(key);
                     continue;
                 }
-                if (!keyDownTime.ContainsKey(key) || gameTime - keyDownTime[key] >= keyRepeatTime)
+                if (!keyDownTime.ContainsKey(key))
                 {
                     result.Add(key);
                     keyDownTime[key] = gameTime;
+                    continue;
+                }
+                if (doNotRepeatKeys.Contains(key))
+                {
+                    continue;
+                }
+
+                if (autoRepeatTime.ContainsKey(key) && gameTime - autoRepeatTime[key] >= autoRepeatSpeed)
+                {
+                    result.Add(key);
+                    autoRepeatTime[key] = gameTime;
+                    continue;
+                }
+
+                if (!autoRepeatTime.ContainsKey(key) && gameTime - keyDownTime[key] >= autoRepeatDelay)
+                {
+                    result.Add(key);
+                    autoRepeatTime[key] = gameTime;
                 }
             }
             return result;
@@ -175,7 +199,7 @@ namespace Tetris
 
             DrawGrid();
             DrawShadow(gameTime);
-            DrawCurrentTetromino();
+            DrawCurrentTetromino(gameTime);
             DrawBoard(gameTime);
             DrawNextTetrominos();
             DrawHold();
@@ -217,19 +241,25 @@ namespace Tetris
 
         private void DrawGrid()
         {
-            spriteBatch.Draw(whiteRectangle, new Rectangle(0, 0, boardWidth, boardHeight), 
+            spriteBatch.Draw(whiteRectangle, new Rectangle(0, 0, boardWidth, boardHeight),
                 Color.Lerp(Color.White, Color.Black, 0.80f));
-            for (int i = 0; i < boardHeightBlocks; i++)
+            int yy = 0;
+            for (int i = numHiddenRows; i < boardHeightBlocks; i++)
+            {
                 for (int j = 0; j < boardWidthBlocks; j++)
-                    spriteBatch.Draw(whiteRectangle, new Rectangle(blockSize * j , i * blockSize ,   
+                {
+                    spriteBatch.Draw(whiteRectangle, new Rectangle(blockSize * j, yy,
                             blockSize - 1, blockSize - 1), Color.Black);
+                }
+                yy += blockSize;
+            }
         }
 
 
         private void DrawTetramino(Tetromino t, Color color, int bs = blockSize, int x = 0, int y = 0)
         {
-            for (int i = 0; i < t.N; i++)
-                for (int j = 0; j < t.M; j++)
+            for (int i = 0; i < t.NumRows; i++)
+                for (int j = 0; j < t.NumColumns; j++)
                 {
                     if (!t.Block(i, j))
                     {
@@ -244,7 +274,7 @@ namespace Tetris
                 }
         }
 
-        private void DrawCurrentTetromino()
+        private void DrawCurrentTetromino(GameTime gameTime)
         {
             if (game.State == Tetris.Game.GameState.Clearing || game.State == Tetris.Game.GameState.GameOver)
             {
@@ -255,11 +285,19 @@ namespace Tetris
             {
                 col = Color.Lerp(col, Color.Black, 0.7f);
             }
+            if (game.State == Tetris.Game.GameState.Locking)
+            {
+                if ((gameTime.TotalGameTime.Ticks / (100 * TimeSpan.TicksPerMillisecond)) % 2  == 0)
+                {
+                    col = Color.Lerp(col, Color.Black, 0.3f);
+                }                    
+            }
+
 
             DrawTetramino(game.CurrentTetromino, col,
                 blockSize,
-                (game.CurrentTetromino.PositionY - game.CurrentTetromino.M / 2) * blockSize,
-                (game.CurrentTetromino.PositionX - game.CurrentTetromino.N / 2) * blockSize);
+                (game.CurrentTetromino.PositionY - game.CurrentTetromino.NumColumns / 2) * blockSize,
+                (game.CurrentTetromino.PositionX - game.NumHiddenRows - game.CurrentTetromino.NumRows / 2) * blockSize);
         }
 
         private void DrawShadow(GameTime gameTime)
@@ -270,22 +308,22 @@ namespace Tetris
             }
             var shadow = new Tetromino(game.CurrentTetromino);
             
-            while (game.Board.Fits(shadow))
+            while (game.Board.DoesTetrominoFit(shadow))
             {
                 shadow.PositionX++;
             }
             shadow.PositionX--;
 
             float amount = 0.80f;
-            if ((gameTime.TotalGameTime.Ticks /  (TimeSpan.TicksPerMillisecond * 100)) % 2 == 0)
+          /*  if ((gameTime.TotalGameTime.Ticks /  (TimeSpan.TicksPerMillisecond * 100)) % 2 == 0)
             {
                 amount = 0.83f;
-            }
+            }*/
 
             DrawTetramino(shadow, Color.Lerp(Color.White, Color.Black, amount),
                 blockSize,
-                (shadow.PositionY - shadow.M / 2) * blockSize,
-                (shadow.PositionX - shadow.N / 2) * blockSize);
+                (shadow.PositionY - shadow.NumColumns / 2) * blockSize,
+                (shadow.PositionX - game.NumHiddenRows - shadow.NumRows / 2) * blockSize);
         }
 
         private void DrawBoard(GameTime gameTime)
@@ -302,19 +340,19 @@ namespace Tetris
                 clearStartTime = new TimeSpan(0);
             }
 
-            var yy = blockSize * game.Board.N;
-            for (int i = game.Board.N - 1; i >= 0; i--)
+            var yy = blockSize * (game.Board.NumRows - game.NumHiddenRows);
+            for (int i = game.Board.NumRows - 1; i >= numHiddenRows; i--)
             {
                 var w = blockSize;
                 var h = blockSize;
 
                 if (game.Board.LineFull(i) && game.State == Tetris.Game.GameState.Clearing)
                 {                            
-                    h = (int)(blockSize * (1.0 - (gameTime.TotalGameTime - clearStartTime).TotalSeconds / game.ClearDelay.TotalSeconds));
+                    h = (int)(blockSize * (1.0 - (gameTime.TotalGameTime - clearStartTime).TotalSeconds / Tetris.Game.ClearDelay.TotalSeconds));
                 }
 
                 yy -= h;
-                for (int j = 0; j < game.Board.M; j++)
+                for (int j = 0; j < game.Board.NumColumns; j++)
                     if (game.Board.Block[i][j])
                     {
                         var col = colors[game.Board.Color[i][j]];
@@ -331,8 +369,6 @@ namespace Tetris
 
         private void DrawNextTetrominos()
         {
-
-
             var bs = (int)(blockSize * 0.80);
             var yy = (int)(4.5 * blockSize);
 
@@ -343,13 +379,13 @@ namespace Tetris
 
             yy += (int)(2.0 * blockSize);
 
-            for (int i = 0;   i < Math.Min(3, game.NextTetromino.Count); i++)
+            for (int i = 0;  i < Math.Min(3, game.NextTetrominos.Count); i++)
             {
-                var t = game.NextTetromino[i];
+                var t = game.NextTetrominos[i];
                 var color = colors[t.Color];
-                for (int l = 0; l < t.N; l++)
+                for (int l = 0; l < t.NumRows; l++)
                 {
-                    if (t.LineEmpty(l))
+                    if (t.IsLineEmpty(l))
                     {
                         yy -= bs;
                     }
@@ -362,11 +398,11 @@ namespace Tetris
                 {
                     color = Color.Lerp(color, Color.Black, 0.7f);
                 }
-                DrawTetramino(t, color, bs, boardWidth + rightBorder / 2 - t.M * bs / 2, yy);
-                yy += (t.N + 1) * bs;
-                for (int l = t.N - 1; l >= 0; l--)
+                DrawTetramino(t, color, bs, boardWidth + rightBorder / 2 - t.NumColumns * bs / 2, yy);
+                yy += (t.NumRows + 1) * bs;
+                for (int l = t.NumRows - 1; l >= 0; l--)
                 {
-                    if (t.LineEmpty(l))
+                    if (t.IsLineEmpty(l))
                     {
                         yy -= bs;
                     } else
@@ -396,9 +432,9 @@ namespace Tetris
             yy += (int)(2.0 * blockSize);
 
             var color = colors[h.Color];
-            for (int l = 0; l < h.N; l++)
+            for (int l = 0; l < h.NumRows; l++)
             {
-                if (h.LineEmpty(l))
+                if (h.IsLineEmpty(l))
                 {
                     yy -= bs;
                 }
@@ -412,7 +448,7 @@ namespace Tetris
             {
                 color = Color.Lerp(color, Color.Black, 0.7f);
             }
-            DrawTetramino(h, color, bs, boardWidth + rightBorder / 2 - h.M * bs / 2, yy);
+            DrawTetramino(h, color, bs, boardWidth + rightBorder / 2 - h.NumColumns * bs / 2, yy);
 
         }
     }

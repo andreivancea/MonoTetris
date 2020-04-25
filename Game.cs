@@ -1,4 +1,4 @@
-﻿using System; 
+﻿using System;
 using System.Collections.Generic;
 
 namespace Tetris
@@ -6,65 +6,62 @@ namespace Tetris
     class Game
     {
 
-        private static readonly IDictionary<Tuple<int, int>, int[,]> wallKicksTable = new Dictionary<Tuple<int, int>, int[,]>()
+
+        private static readonly int[,,] srsRotationOffset = new int[,,]
         {
-            { new Tuple<int, int>(0, 1), new int[,] { {-1, 0}, {-1,+1}, { 0,-2}, {-1,-2} } },
-            { new Tuple<int, int>(1, 0), new int[,] { { +1, 0 }, { +1, -1 }, { 0, +2 }, { +1, +2 } } },
-            { new Tuple<int, int>(1, 2), new int[,] { {+1, 0}, {+1,-1}, { 0,+2}, {+1,+2} } },
-            { new Tuple<int, int>(2, 1), new int[,] { { -1, 0 }, { -1, +1 }, { 0, -2 }, { -1, -2 } } },
-            { new Tuple<int, int>(2, 3), new int[,] { { +1, 0 }, { +1, +1 }, { 0, -2 }, { +1, -2 } } },
-            { new Tuple<int, int>(3, 2), new int[,] { {-1, 0}, {-1,-1}, { 0,+2}, {-1,+2} } },
-            { new Tuple<int, int>(3, 0), new int[,] { {-1, 0}, {-1,-1}, { 0,+2}, {-1,+2} } },
-            { new Tuple<int, int>(0, 3), new int[,] { { +1, 0 }, { +1, +1 }, { 0, -2 }, { +1, -2 } } }, 
+            {  {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}  },
+            {  {0, 0}, {+1, 0}, {+1,-1}, {0,+2 }, {+1,+2} },
+            {  {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0} },
+            {  {0, 0 }, {-1, 0}, {-1,-1}, {0,+2}, {-1,+2} },
         };
 
 
-
-
-        private static readonly IDictionary<Tuple<int, int>, int[,]> wallKicksTableI = new Dictionary<Tuple<int, int>, int[,]>()
+        private static readonly int[,,] srsRotationOffsetI = new int[,,]
         {
-            { new Tuple<int, int>(0, 1), new int[,] { {-1, 0}, {-1,+1}, { 0,-2}, {-1,-2} } },
-            { new Tuple<int, int>(1, 0), new int[,] { { +1, 0 }, { +1, -1 }, { 0, +2 }, { +1, +2 } } },
-            { new Tuple<int, int>(1, 2), new int[,] { {+1, 0}, {+1,-1}, { 0,+2}, {+1,+2} } },
-            { new Tuple<int, int>(2, 1), new int[,] { { -1, 0 }, { -1, +1 }, { 0, -2 }, { -1, -2 } } },
-            { new Tuple<int, int>(2, 3), new int[,] { { +1, 0 }, { +1, +1 }, { 0, -2 }, { +1, -2 } } },
-            { new Tuple<int, int>(3, 2), new int[,] { {-1, 0}, {-1,-1}, { 0,+2}, {-1,+2} } },
-            { new Tuple<int, int>(3, 0), new int[,] { {-1, 0}, {-1,-1}, { 0,+2}, {-1,+2} } },
-            { new Tuple<int, int>(0, 3), new int[,] { { +1, 0 }, { +1, +1 }, { 0, -2 }, { +1, -2 } } },
+            {  {0, 0}, {-1, 0}, {+2, 0}, {-1, 0}, {+2, 0}  },
+            {  {-1, 0}, {0, 0}, {0, 0}, {0,+1}, {0,-2} },
+            {  { -1,+1}, {+1,+1}, {-2,+1}, {+1, 0}, {-2, 0}  },
+            {  {0,+1}, {0,+1}, {0, +1}, {0,-1}, {0,+2}  },
         };
 
+        private static readonly int[,,] srsRotationOffsetO = new int[,,]
+        {
+            {  {0, 0}  },
+            {  {0, -1} },
+            {  {-1, -1} },
+            {  {-1, 0} },
+        };
 
         private static readonly IList<Tetromino> tetrominos = new List<Tetromino>
         {
             // XXXX
             new Tetromino(new bool[,]
             {
-                {false, false, false, false},
-                {true, true, true, true},
-                {false, false, false, false},
-                {false, false, false, false},
-            }, 0),
+                {false, false, false, false, false},
+                {false, false, false, false, false},
+                {false, true, true, true, true},
+                {false, false, false, false, false},
+                {false, false, false, false, false},
+            }, srsRotationOffsetI, 0),
             
 
             // XX
             // XX
             new Tetromino(new bool[,]
             {
-                {false, true, true, false},
-                {false, true, true, false},
-                {false, false, false, false}
-            }, 1),
+                {false, true, true},
+                {false, true, true},
+                {false, false, false},
+            }, srsRotationOffsetO, 1),
 
-
-
-            // XXX
             //  X
+            // XXX
             new Tetromino(new bool[,]
             {
-                {false, false, false},
+                {false, true, false},
                 {true, true, true},
-                {false, true,  false}
-            }, 2),
+                {false, false,  false}
+            }, srsRotationOffset, 2),
 
 
             //  XX
@@ -74,7 +71,7 @@ namespace Tetris
                 {false, true, true},
                 {true, true,  false},
                 {false, false, false},
-            }, 3),
+            }, srsRotationOffset, 3),
 
 
             // XX
@@ -84,44 +81,54 @@ namespace Tetris
                 {true, true, false},
                 {false, true,  true},
                 {false, false, false},
-            }, 4),
+            }, srsRotationOffset, 4),
 
 
-            // XXX
-            //   X
-            new Tetromino(new bool[,]
-            {
-                {false, false, false},
-                {true, true, true},
-                {false, false,  true}
-            }, 5),
-
-            // XXX
             // X
+            // XXX
             new Tetromino(new bool[,]
             {
-                {false, false, false},
+                {true, false, false},
                 {true, true, true},
-                {true, false,  false}
-            }, 6),
+                {false, false,  false}
+            }, srsRotationOffset, 5),
+
+            //   X
+            // XXX
+            new Tetromino(new bool[,]
+            {
+                {false, false, true},
+                {true, true, true},
+                {false, false,  false}
+            }, srsRotationOffset, 6),
         };
 
         public Board Board { get; private set; }
 
         public Tetromino HoldTetromino { get; private set; }
 
+        public int NumHiddenRows { get; private set; }
+
         public Tetromino CurrentTetromino { get; private set; }
-        public IList<Tetromino> NextTetromino { get; private set;}
+        public IList<Tetromino> NextTetrominos { get; private set; }
 
         public int Level { get; private set; }
-        public int Score { get; private set;  }
+        public int Score { get; private set; }
 
         private readonly Random rnd = new Random();
 
-        private TimeSpan lastDropTime = new TimeSpan(0);
+        private TimeSpan dropTime = new TimeSpan(0);
+        private TimeSpan clearTime = new TimeSpan(0);
+        private TimeSpan lockTime = new TimeSpan(0);
 
-        public readonly TimeSpan ClearDelay = new TimeSpan(0, 0, 0, 0, 500);
-        
+
+        public static readonly TimeSpan ClearDelay = new TimeSpan(0, 0, 0, 0, 500);
+
+        public static readonly TimeSpan LockDelay = new TimeSpan(0, 0, 0, 0, 500);
+
+        private bool cancelLockDelay = false;
+
+
         private int numClear;
 
         private bool canHold = true;
@@ -139,11 +146,12 @@ namespace Tetris
             TogglePause,
             Quit,
         }
-        
+
         public enum GameState
         {
             NotStarted,
             Running,
+            Locking,
             Clearing,
             Paused,
             GameOver,
@@ -153,36 +161,38 @@ namespace Tetris
         public GameState State { get; private set; }
 
 
-        public Game(int n, int m)
+        public Game(int numRows, int numColumns, int numHiddenRows)
         {
-            Board = new Board(n, m);
+            Board = new Board(numRows, numColumns);
+            NumHiddenRows = numHiddenRows;
             State = GameState.Running;
-            NextTetromino = new List<Tetromino>();
+            NextTetrominos = new List<Tetromino>();
             AddRandomTetrominos();
             PickTetromino();
         }
-       
+
         private void AddRandomTetrominos()
         {
             for (int i = 0; i < tetrominos.Count; i++)
             {
-                NextTetromino.Insert(NextTetromino.Count - i + rnd.Next(i + 1), 
+                NextTetrominos.Insert(NextTetrominos.Count - i + rnd.Next(i + 1),
                     new Tetromino(tetrominos[i]));
             }
         }
 
         private void PickTetromino()
         {
-            CurrentTetromino = NextTetromino[0];
-            CurrentTetromino.PositionX =  Math.Max(CurrentTetromino.N, CurrentTetromino.M) / 2;
-            CurrentTetromino.PositionY = Board.M / 2;
+            CurrentTetromino = NextTetrominos[0];
 
-            NextTetromino.RemoveAt(0);
-            if (NextTetromino.Count < tetrominos.Count)
+            CurrentTetromino.PositionX = NumHiddenRows + CurrentTetromino.NumRows / 2;
+            CurrentTetromino.PositionY = Board.NumColumns / 2 - 1;
+
+            NextTetrominos.RemoveAt(0);
+            if (NextTetrominos.Count < tetrominos.Count)
             {
                 AddRandomTetrominos();
             }
-            if (!Board.Fits(CurrentTetromino))
+            if (!Board.DoesTetrominoFit(CurrentTetromino))
             {
                 State = GameState.GameOver;
                 CurrentTetromino = null;
@@ -230,81 +240,131 @@ namespace Tetris
         }
 
 
-        void TryRotate(int d)
+
+        void HardDrop()
         {
-            CurrentTetromino.Rotation += d;
-            if (Board.Fits(CurrentTetromino))
+            while (Board.DoesTetrominoFit(CurrentTetromino))
             {
-                return;
+                CurrentTetromino.PositionX++;
             }
+            CurrentTetromino.PositionX--;
+        }
 
-            for (int i = 1; i <= CurrentTetromino.M / 2; i++)
+        void SoftDrop()
+        {
+            CurrentTetromino.PositionX++;
+            if (!Board.DoesTetrominoFit(CurrentTetromino))
             {
-                CurrentTetromino.PositionY -= i;
-                if (Board.Fits(CurrentTetromino))
+                CurrentTetromino.PositionX--;
+            }
+        }
+
+        void Rotate(int d)
+        {
+
+            int oldRotation = CurrentTetromino.Rotation;
+            int nextRotation = (oldRotation + 4 + d) % 4;
+            
+
+            CurrentTetromino.Rotation = nextRotation;
+
+            for (int i = 0; i < CurrentTetromino.SrsRotationOffset.GetLength(1); i++)
+            {
+                int dx = -(CurrentTetromino.SrsRotationOffset[oldRotation, i, 1] -
+                           CurrentTetromino.SrsRotationOffset[nextRotation, i, 1]) ;
+                int dy = CurrentTetromino.SrsRotationOffset[oldRotation, i, 0] -
+                         CurrentTetromino.SrsRotationOffset[nextRotation, i, 0];
+
+                CurrentTetromino.PositionX += dx;
+                CurrentTetromino.PositionY += dy;
+
+                if (Board.DoesTetrominoFit(CurrentTetromino))
                 {
                     return;
                 }
-                CurrentTetromino.PositionY += i;
 
-
-                CurrentTetromino.PositionY += i;
-                if (Board.Fits(CurrentTetromino))
-                {
-                    return;
-                }
-                CurrentTetromino.PositionY -= i;
+                CurrentTetromino.PositionX -= dx;
+                CurrentTetromino.PositionY -= dy;
             }
 
             // unable to rotate; give up.
-            CurrentTetromino.Rotation -= d;
+            CurrentTetromino.Rotation = oldRotation;
+        }
+
+        void Left()
+        {
+            CurrentTetromino.PositionY--;
+            if (!Board.DoesTetrominoFit(CurrentTetromino))
+            {
+                CurrentTetromino.PositionY++;
+            }
         }
 
 
+        void Right()
+        {
+            CurrentTetromino.PositionY++;
+            if (!Board.DoesTetrominoFit(CurrentTetromino))
+            {
+                CurrentTetromino.PositionY--;
+            }
+        }
 
-        private void HandleRunningEvent(Event ev)
-        {            
+        void Hold()
+        {
+            if (HoldTetromino != null)
+            {
+                NextTetrominos.Insert(0, HoldTetromino);
+            }
+            HoldTetromino = CurrentTetromino;
+            HoldTetromino.Rotation = 0;
+            PickTetromino();
+        }
+
+
+        private void HandleEvent(Event ev, TimeSpan gameTime)
+        {
+            if (State == GameState.Clearing || State == GameState.GameOver)
+            {
+                return;
+            }
+            if (State == GameState.Paused)
+            {
+                if (ev == Event.TogglePause)
+                {
+                    State = GameState.Running;
+                }
+                return;
+            }
+
+
             switch (ev)
             {
                 case Event.Left:
-                    CurrentTetromino.PositionY--;
-                    if (!Board.Fits(CurrentTetromino))
-                    {
-                        CurrentTetromino.PositionY++;
-                    }
+                    Left();
                     break;
 
                 case Event.Right:
-                    CurrentTetromino.PositionY++;
-                    if (!Board.Fits(CurrentTetromino))
-                    {
-                        CurrentTetromino.PositionY--;
-                    }
-
+                    Right();
                     break;
 
                 case Event.SoftDrop:
-                    CurrentTetromino.PositionX++;
-                    if (!Board.Fits(CurrentTetromino))
-                    {
-                        CurrentTetromino.PositionX--;
-                    }
+                    SoftDrop();
+                    dropTime = gameTime;
                     break;
 
                 case Event.HardDrop:
-                    while (Board.Fits(CurrentTetromino))
-                    {
-                        CurrentTetromino.PositionX++;
-                    }
-                    CurrentTetromino.PositionX--;
+                    HardDrop();
+                    cancelLockDelay = true;
+                    dropTime = gameTime;
                     break;
 
                 case Event.RotateRight:
-                    TryRotate(1);
+                    Rotate(1);
                     break;
 
                 case Event.RotateLeft:
-                    TryRotate(-1);
+                    Rotate(-1);
                     break;
 
                 case Event.Hold:
@@ -312,12 +372,7 @@ namespace Tetris
                     {
                         break;
                     }
-                    if (HoldTetromino != null) {
-                        NextTetromino.Insert(0, HoldTetromino);
-                    }
-                    HoldTetromino = CurrentTetromino;
-                    HoldTetromino.Rotation = 0;
-                    PickTetromino();
+                    Hold();
                     canHold = false;
                     break;
 
@@ -325,70 +380,85 @@ namespace Tetris
                     State = GameState.Paused;
                     break;
             }
-        }
-
-        private void HandleEvent(Event ev)
-        {
-            if (ev == Event.None)
-            {
-                return;
-            }
-
-            switch (State)
-            {
-                case GameState.Running:
-                    HandleRunningEvent(ev);
-                    break;
-                case GameState.Paused:
-                    if (ev == Event.TogglePause)
-                    {
-                        State = GameState.Running;
-                    }
-                    break;
-            }
 
         }
 
         private void UpdateScoreLevel(int r)
         {
-            int[] bs = {0, 40, 100, 300, 1200};
+            int[] bs = { 0, 40, 100, 300, 1200 };
 
             Score += bs[r] * (Level + 1);
 
             numClear += r;
             Level = numClear / 10;
-         }
+        }
+
+        private bool ShouldLock()
+        {
+            if (CurrentTetromino == null || State != GameState.Running) 
+            {
+                return false;
+            }
+
+            bool result = false;
+            CurrentTetromino.PositionX++;
+            if (!Board.DoesTetrominoFit(CurrentTetromino))
+            {
+                result = true;
+            }
+            CurrentTetromino.PositionX--;
+            return result;
+        }
 
         public void Update(Event ev, TimeSpan gameTime)
         {
-            HandleEvent(ev);
+            HandleEvent(ev, gameTime);
+            if (gameTime - dropTime >= GetGravity())
+            {
+                HandleEvent(Event.SoftDrop, gameTime);
+            }
+
+
             if (ev == Event.Quit)
             {
                 State = GameState.Quiting;
-            }         
-            if (State == GameState.Clearing && gameTime - lastDropTime >= ClearDelay)
+            }
+
+            if (State == GameState.Clearing && gameTime - clearTime >= ClearDelay)
             {
                 UpdateScoreLevel(Board.Clear());
-                lastDropTime = gameTime;
                 State = GameState.Running;
+
+                dropTime = gameTime;
                 PickTetromino();
             }
-            if (State == GameState.Running && (gameTime - lastDropTime >= GetGravity() || ev == Event.HardDrop))
+
+            if (State == GameState.Locking && (gameTime - lockTime >= LockDelay || cancelLockDelay))
             {
-                lastDropTime = gameTime;
-                CurrentTetromino.PositionX++; ;
-                if (!Board.Fits(CurrentTetromino))
+                canHold = true;
+                cancelLockDelay = false;
+                HardDrop();
+
+                Board.Add(CurrentTetromino);
+                if (Board.CanClearLines())
                 {
-                    canHold = true;
-                    CurrentTetromino.PositionX--;
-                    Board.Add(CurrentTetromino);
-                    if (Board.CanClear())
-                    {
-                        CurrentTetromino = null;
-                        State = GameState.Clearing;
-                    }
-                    else PickTetromino();
+                    CurrentTetromino = null;
+                    State = GameState.Clearing;
+                    clearTime = gameTime;
                 }
+                else
+                {
+                    State = GameState.Running;
+                    PickTetromino();
+                }
+            }
+
+
+            if (State == GameState.Running && ShouldLock())
+            {
+                State = GameState.Locking;
+                lockTime = gameTime;
+                canHold = false;
             }
         }
     }
